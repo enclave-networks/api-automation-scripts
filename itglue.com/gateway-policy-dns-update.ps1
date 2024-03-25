@@ -32,20 +32,20 @@ if ($apiKey -eq "")
 $headers = @{Authorization = "Bearer $apiKey"}
 $contentType = "application/json";
 
-$policies = Invoke-RestMethod -ContentType $contentType -Method Get -Uri "https://api.enclave.io/org/$orgId/policies?search=$policyName" -Headers $headers;
+$response = Invoke-RestMethod -ContentType $contentType -Method Get -Uri "https://api.enclave.io/org/$orgId/policies?search=$policyName" -Headers $headers;
 
-if ($policies.total -eq 0)
+if ($response.total -eq 0)
 {
     Write-Error "No policies found with name $policyName."
     return;
 }
-elseif ($policies.total -gt 1)
+elseif ($response.total -gt 1)
 {
     Write-Error "Multiple policies found with name $policyName; please provide a more specific name."
     return;
 }
 
-$policyId = $policies.items[0].id;
+$policyId = $response.items[0].id;
 
 Write-Host "Found policy $policyName with id $policyId."
 
