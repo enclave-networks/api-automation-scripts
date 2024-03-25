@@ -30,21 +30,27 @@ $jsonUrl = "https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10
 $jsonResponse = Invoke-RestMethod -Uri $jsonUrl -Method Get -Headers $headers
 
 $subnets = @()
+$uniqueSubnets = @{}
 
 foreach ($item in $jsonResponse) {
     if ($item.ips) {
         foreach ($ip in $item.ips) {
             if ($ip -match '\.') {
                 $description = if ($item.serviceAreaDisplayName) { "Office 365 ($($item.serviceAreaDisplayName))" } else { "Office 365" }
-                $subnet = @{
-                    ipRange = $ip
-                    description = $description
+                # Check if the IP is already in the hashtable
+                if (-not $uniqueSubnets.ContainsKey($ip)) {
+                    $uniqueSubnets[$ip] = @{
+                        ipRange = $ip
+                        description = $description
+                    }
                 }
-                $subnets += $subnet
             }
         }
     }
 }
+
+# Convert the hashtable back to an array of objects
+$subnets = $uniqueSubnets.Values
 
 $response = Invoke-RestMethod -ContentType $contentType -Method Get -Uri "https://api.enclave.io/org/$orgId/policies?search=$policyName" -Headers $headers;
 
