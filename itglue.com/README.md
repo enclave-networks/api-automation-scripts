@@ -1,8 +1,22 @@
-# Filter an Enclave Gateway Policy to provide a route to IT Glue IP addresses
+# Filter an Enclave Gateway Policy to provide a route to ITGlue IP addresses
 
-ITGlue do not publish the IP addresses of the services. If you wish to whitelist access to ITGlue using Enclave, you will need to schedule a script to dynamically resolve ITGlue server IP addresses on a regular basis and use the Enclave API surface to automatically update IP filtering rules on an Enclave Gateway policy.
+Enclave can help to protect access to ITGlue accounts by using ITGlue's [IP Access Control](https://www.itglue.com/features/ip-access-control/) feature and configuring Enclave to route traffic to their platform via an Enclave Gateway with a known static IP address.
 
-We recommend you schedule execution of this script on your RMM platform or as an Azure Function on a recurring timer, using the platform's secrets management capability to safely provide the `<apiKey>` value to the PowerShell script.
+If you do not wish to route all traffic through the Enclave gateway, follow these steps and use this script to configure an Enclave policy.
+
+1. Setup an Enclave Gateway
+2. Enable the Gateway to route traffic to any IP address, using `0.0.0.0/0`
+3. Setup a Gateway Access Policy, choose sender tags and the Enclave Gateway
+4. Configure subnet filtering rules on the policy to only route traffic for ITGlue IP addresses
+5. Use ITGlue's [IP Access Control](https://www.itglue.com/features/ip-access-control/) to restrict access to the Enclave Gateway IP address
+
+## Using this PowerShell script
+
+Unfortunately, ITGlue do not publish IP addresses of their services so we need to dynamically resolve ITGlue server IP addresses from DNS.
+
+This script accepts ITGlue service DNS records as inputs (e.g. `customer1.eu.itglue.com`), and resolves those hostnames into IP addresses (e.g. `18.196.134.151`) which are then added as IP filtering rules to the relevant Enclave Gateway Policy using the Enclave API.
+
+You should schedule this script to run on a regular basis as ITGlue service IP addresses may change. We recommend this script is run by your RMM platform or as an Azure Function on a recurring timer. You should use the platform's secrets management capability to safely provide your `<apiKey>` to the script.
 
 ```bash
 .\gateway-policy-dns-update.ps1 -orgId <orgId> `
@@ -17,7 +31,9 @@ We recommend you schedule execution of this script on your RMM platform or as an
 
 Remove the `-test` argument to make the API call and change the Enclave policy configuration.
 
-For example, if you tenant name is `customer1` you may use the script as follows:
+## Example
+
+For example, if your tenant name is `customer1` you may use the script as follows:
 
 
 ```bash
@@ -30,3 +46,12 @@ For example, if you tenant name is `customer1` you may use the script as follows
                                           itg-api-prod-eu-api-lb-eu-central-1.itglue.com `
                                 -test
 ```
+
+## Requirements
+
+You will need to know:
+
+- Your Enclave Organisation ID
+- Your Enclave API Key
+- Your Enclave Policy Name
+- Your ITGlue service hostnames (DNS records)

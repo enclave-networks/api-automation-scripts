@@ -1,10 +1,19 @@
 # Filter an Enclave Gateway Policy to provide a route to Office 365 IP addresses
 
-Microsoft publish the IP addresses and subnet ranges for their Office 365 services here [https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10c5ed1-bad1-445f-b386-b919946339a7](https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10c5ed1-bad1-445f-b386-b919946339a7).
+Enclave can help to protect access to Office 365 accounts. You can configure O365 to only accept logins from the known static IP addresses of one or more Enclave Gateways. If you wish to selectively route only O365 traffic through an Enclave gateway (and not all Internet traffic), follow these steps and use this script to configure an Enclave policy.
 
-This script extracts the `IPv4` addresses and uses the Enclave API surface to automatically update IP filtering rules on an Enclave Gateway policy.
+1. Setup an Enclave Gateway
+2. Enable the Gateway to route traffic to any IP address, using `0.0.0.0/0`
+3. Setup a Gateway Access Policy, choose sender tags and the Enclave Gateway
+4. Configure subnet filtering rules on the policy to only route traffic for to Microsoft Office 365 service IP addresses
 
-We recommend you schedule execution of this script on your RMM platform or as an Azure Function on a recurring timer, using the platform's secrets management capability to safely provide the `<apiKey>` value to the PowerShell script.
+## Using this PowerShell script
+
+Microsoft publish the IP addresses and subnet ranges for their Office 365 services here [https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10c5ed1-bad1-445f-b386-b919946339a7](https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10c5ed1-bad1-445f-b386-b919946339a7), however the document is complex, contains duplicated IP addresses and will change over time.
+
+This script extracts and de-duplicates the `IPv4` addresses from the Microsoft JSON document and uses the Enclave API surface to automatically update the subnet filtering rules on an Enclave Gateway policy.
+
+We recommend you schedule execution of this script on your RMM platform or as an Azure Function on a recurring timer to account for IP address changes, and use the platform's secrets management capability to safely provide your `<apiKey>` to the script.
 
 ```bash
  .\gateway-policy-o365-update.ps1 -orgId <orgId> `
@@ -56,3 +65,11 @@ Once the script has run, the updated policy will contain a set of subnet filters
 | 52.122.0.0/15 | Office 365 (Skype for Business Online and Microsoft Teams) |
 | 52.238.119.141/32 | Office 365 (Skype for Business Online and Microsoft Teams) |
 | 52.244.160.207/32 | Office 365 (Skype for Business Online and Microsoft Teams) |
+
+## Requirements
+
+You will need to know:
+
+- Your Enclave Organisation ID
+- Your Enclave API Key
+- Your Enclave Policy Name
