@@ -1,10 +1,6 @@
 # Define the list of domains with their respective checks
 $domains = @(
     @{
-        Name = "uksouth.management.azure.com"
-        Checks = @("tcp/443")
-    },
-    @{
         Name = "api.enclave.io"
         Checks = @("tcp/443")
     },
@@ -18,6 +14,18 @@ $domains = @(
     },
     @{
         Name = "relays.enclave.io"
+        Checks = @("tcp/443", "icmp")
+    },
+    @{
+        Name = "google.com"
+        Checks = @("tcp/443", "icmp")
+    },
+    @{
+        Name = "management.azure.com"
+        Checks = @("tcp/443", "icmp")
+    },
+    @{
+        Name = "go.microsoft.com"
         Checks = @("tcp/443", "icmp")
     }
 )
@@ -85,14 +93,18 @@ foreach ($domain in $domains) {
                                 [string]$Address
                             )
                             try {
-                                $pingResult = Test-Connection -ComputerName $Address -Count 1 -WarningAction SilentlyContinue
+                                $pingResult = Test-Connection -ComputerName $Address -Count 1 -WarningAction SilentlyContinue -ErrorAction Stop
                                 if ($pingResult.StatusCode -eq 0) {
                                     return "ok $($pingResult.ResponseTime)ms"
                                 } else {
                                     return "failure $($pingResult.ResponseTime)ms (timeout waiting for a response)"
                                 }
                             } catch {
-                                return "failure ($($_.Exception.Message))"
+                                if ($Address -match ":") {
+                                    return "failure (A socket operation was attempted to an unreachable network [$Address])"
+                                } else {
+                                    return "failure ($($_.Exception.Message))"
+                                }
                             }
                         }
                         $status = Test-IcmpPing -Address $addr
