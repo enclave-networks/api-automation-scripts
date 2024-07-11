@@ -1,6 +1,6 @@
 # Availability report for the Enclave Platform
 
-This script resolves and attempts to connect to key hostnames and IP addresses which comprise the Enclave platform. Use this script if you're having trouble enrolling, or establishing connectivity with Enclave. Note that PowerShell is rather slow to open TCP sockets, so the latency is not representative of real-world conditions. ICMP checks performed by PowerShell however, are quite accurate.
+This script resolves and attempts to connect to key hostnames and IP addresses that comprise the Enclave platform. Use this script if you're having trouble enrolling or establishing connectivity with Enclave. Note that PowerShell is relatively slow at opening TCP sockets, so the latency may not be representative of real-world conditions. However, ICMP checks performed by PowerShell are quite accurate.
 
 Example output:
 
