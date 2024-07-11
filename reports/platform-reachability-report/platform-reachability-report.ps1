@@ -30,6 +30,36 @@ $domains = @(
     }
 )
 
+function Get-NameserversWithInterfaceNames {
+    Write-Host "Nameservers"
+    $onlineAdapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
+    $dnsInfo = @()
+
+    foreach ($adapter in $onlineAdapters) {
+        $nameserversIPv4 = Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
+        $nameserversIPv6 = Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv6
+        $nameservers = @($nameserversIPv4) + @($nameserversIPv6)
+
+        foreach ($nameserver in $nameservers) {
+            foreach ($address in $nameserver.ServerAddresses) {
+                $dnsInfo += [PSCustomObject]@{
+                    AddressFamily  = if ($server -match ":") { "IPv6" } else { "IPv4" }
+                    State          = "Up"
+                    InterfaceIndex = $nameserver.InterfaceIndex
+                    InterfaceAlias = $nameserver.InterfaceAlias
+                    Nameserver     = $address
+                }
+            }
+        }
+    }
+
+    # Sort the information by AddressFamily (IPv4 first, then IPv6), then InterfaceIndex and InterfaceAlias
+    $dnsInfo = $dnsInfo | Sort-Object -Property @{Expression="AddressFamily"; Ascending=$true}, InterfaceIndex, InterfaceAlias
+
+    # Display the information
+    $dnsInfo | Format-Table -AutoSize
+}
+
 # Function to resolve DNS
 function Resolve-Dns {
     param (
@@ -75,6 +105,8 @@ function Format-Output {
 }
 
 # Main script logic
+Get-NameserversWithInterfaceNames
+
 foreach ($domain in $domains) {
     Write-Host "$($domain.Name)"
     
