@@ -2,7 +2,13 @@
 
 This script resolves and attempts to connect to key hostnames and IP addresses that comprise the Enclave platform. Use this script if you're having trouble enrolling or establishing connectivity with Enclave. Note that PowerShell is relatively slow at opening TCP sockets, so the latency may not be representative of real-world conditions. However, ICMP checks performed by PowerShell are quite accurate.
 
-Example output:
+## Using this PowerShell script
+
+```
+.\platform-reachability-report.ps1
+```
+
+## Example output
 
 ```
 PS C:\git\enclave\api-automation-scripts\reports\platform-reachability-report> .\platform-reachability-report.ps1
@@ -58,12 +64,3 @@ go.microsoft.com
     tcp/2a02:26f0:1780:598::2c1a:443 .............. [ok 90ms]
     icmp/2a02:26f0:1780:598::2c1a ................. [ok 18ms]
 ```
-
-## Using this PowerShell script
-
-You may run the PowerShell script without any arguments, it will prompt you to provide a personal access token and Organisation ID.
-
-```
-.\platform-reachability-report.ps1
-```
-
