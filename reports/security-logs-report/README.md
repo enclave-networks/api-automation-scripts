@@ -8,11 +8,11 @@ Example output:
 PS C:\git\api-automation-scripts\reports\security-logs-report> .\security-logs-report.ps1
 Warning: The file 'output.csv' already exists and will be overwritten.
 Do you want to proceed? (y/n): y
-Requesting page 1/1815
-Requesting page 2/1815
+Requesting page 1/43
+Requesting page 2/43
 ..
-Requesting page 1815/1815
-362983 log entries successfully written to output.csv
+Requesting page 43/43
+8617 log entries successfully written to output.csv
 ```
 
 ## Using this PowerShell script
