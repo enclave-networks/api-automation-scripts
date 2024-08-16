@@ -1,0 +1,12 @@
+services:
+  enclave:
+    build: .
+    deploy:
+      replicas: 1
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - ENCLAVE_ENROLMENT_KEY
+    restart: unless-stopped
