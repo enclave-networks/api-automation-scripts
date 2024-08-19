@@ -60,7 +60,7 @@ run_dns_queries() {
         dig $hostname # > /dev/null 2>&1
 
         # Small random delay between queries to avoid flooding
-        sleep $((RANDOM % 2 + 1))
+        sleep $((RANDOM % 300 + 1))
         
         echo "Queried DNS for $hostname."
     done
