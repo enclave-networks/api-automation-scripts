@@ -58,7 +58,7 @@ run_dns_queries() {
         hostname=${HOSTNAMES[$RANDOM % ${#HOSTNAMES[@]}]}
         
         # Perform a DNS query using dig
-        dig $hostname @8.8.8.8  # > /dev/null 2>&1
+        dig $hostname # > /dev/null 2>&1
 
         # Small random delay between queries to avoid flooding
         sleep $((RANDOM % 2 + 1))
