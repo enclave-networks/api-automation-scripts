@@ -30,3 +30,15 @@ sudo systemctl start docker
 # Verify installation
 docker --version
 docker compose version
+
+# Install netdata
+wget -O /tmp/netdata-kickstart.sh https://get.netdata.cloud/kickstart.sh && sh /tmp/netdata-kickstart.sh
+
+# Install encalve
+curl -fsSL https://packages.enclave.io/apt/enclave.stable.gpg  | sudo gpg --dearmor -o /usr/share/keyrings/enclave.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/enclave.gpg] https://packages.enclave.io/apt stable main" | \
+  sudo tee /etc/apt/sources.list.d/enclave.stable.list
+
+sudo apt update && sudo apt install enclave
