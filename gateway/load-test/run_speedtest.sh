@@ -1,9 +1,6 @@
 #!/bin/bash
 
-# URL of the file containing the list of hostnames
-HOSTNAMES_URL="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-
-# Path where the hostname file will be downloaded
+# Define the path to the hosts.txt file taken from https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
 HOSTNAMES_FILE="./hosts.txt"
 
 # Path to the Enclave executable
@@ -35,18 +32,20 @@ run_speedtest() {
 
 # Function to download and load hostnames from a URL
 load_hostnames() {
-    echo "Downloading hostnames file from $HOSTNAMES_URL..."
-    if curl -s -o "$HOSTNAMES_FILE" "$HOSTNAMES_URL"; then
-        if [[ -f "$HOSTNAMES_FILE" ]]; then
-            # Extract hostnames from the file, ignoring comment lines and extracting only the domain names
-            HOSTNAMES=($(awk '/^[0-9]/ {print $2}' "$HOSTNAMES_FILE"))
+    echo "Loading hostnames..."
+
+    if [[ -f "$HOSTNAMES_FILE" ]]; then
+        # Extract hostnames from the hosts.txt file, ignoring comment lines and extracting only the domain names
+        HOSTNAMES=($(awk '/^[0-9]/ {print $2}' "$HOSTNAMES_FILE" | head -n 1000))
+        
+        if [[ ${#HOSTNAMES[@]} -gt 0 ]]; then
             echo "Loaded ${#HOSTNAMES[@]} hostnames from $HOSTNAMES_FILE."
         else
-            echo "Error: Hostnames file not found after download."
+            echo "Error: No hostnames found in $HOSTNAMES_FILE."
             exit 1
         fi
     else
-        echo "Error: Failed to download hostnames file from $HOSTNAMES_URL"
+        echo "Error: $HOSTNAMES_FILE file not found."
         exit 1
     fi
 }
