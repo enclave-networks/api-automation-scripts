@@ -4,7 +4,7 @@
 sudo apt update
 
 # Install packages to allow apt to use a repository over HTTPS
-sudo apt-get install -y ca-certificates curl gnupg
+sudo apt-get install -y ca-certificates curl gnupg dnstop
 
 # Add Docker’s official GPG key
 sudo mkdir -m 0755 -p /etc/apt/keyrings
