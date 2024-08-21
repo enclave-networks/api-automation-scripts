@@ -2,7 +2,7 @@ services:
   enclave:
     build: .
     healthcheck:
-      test: enclave waitfor QWGG8 -t 2
+      test: enclave waitfor discover.enclave.io -t 2
       interval: 1m                          # time between successive health checks.
       timeout: 5s                           # how long Docker will wait for the health check command to complete before considering it failed
       retries: 0                            # how many consecutive failures of the health check Docker will tolerate before marking the container unhealthy
