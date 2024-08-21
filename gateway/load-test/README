@@ -2,6 +2,10 @@
 
 The files in this repository are provided for use with guidance from the Enclave Support team.
 
+1. Edit `.env`
+2. Set number of replicas in `docker-compose.yml`
+3. Set container health check to name of gateway in `docker-compose.yml`
+
 ```
 docker compose up -d --build
 ```
