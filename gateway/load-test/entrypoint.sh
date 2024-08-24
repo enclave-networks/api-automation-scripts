@@ -103,5 +103,6 @@ run_dns_queries() {
 
 run_dns_queries &
 run_speedtest &
+run_random_exit &
 
-run_random_exit
+wait
