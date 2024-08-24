@@ -1,0 +1,14 @@
+services:
+  enclave-gw1:
+    hostname: hostname-gw01-docker-segment-1
+    image: enclavenetworks/enclave
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - ENCLAVE_ENROLMENT_KEY
+
+volumes:
+  enclave-config:
+  enclave-logs:

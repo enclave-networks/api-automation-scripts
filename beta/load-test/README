@@ -1,0 +1,12 @@
+# Load Test
+
+The files in this repository are provided for use with guidance from the Enclave Support team.
+
+1. Edit `.env`
+1. Edit `entrypoint.sh` to configure options
+1. Set number of replicas in `docker-compose.yml`
+1. Optionally set container health check to SystemId of Enclave Gateway in `docker-compose.yml`
+
+```
+docker compose up -d --build
+```
