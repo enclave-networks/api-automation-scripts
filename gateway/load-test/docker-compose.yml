@@ -16,4 +16,4 @@ services:
       - /dev/net/tun
     environment:
       - ENCLAVE_ENROLMENT_KEY
-    restart: no                             # prevent containers from running on startup
+    restart: on-failure                             # prevent containers from running on startup

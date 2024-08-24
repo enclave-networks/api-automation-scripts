@@ -5,8 +5,8 @@ RUN apt-get update && apt-get install -y speedtest-cli dnsutils curl
 
 # Copy the script into the container
 COPY hosts.txt .
-COPY run_speedtest.sh .
-RUN chmod +x run_speedtest.sh
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 # Set the script as the default command
-ENTRYPOINT  ["run_speedtest.sh"]
+ENTRYPOINT  ["entrypoint.sh"]
