@@ -143,10 +143,10 @@ if ($response.Count -le 0) {
         $segmentTag = "segment-$segmentNumber"
         
         # Get current item's tags, removing any existing "segment-*" tags
-        $tagSet = $($response[$i].tags | Where-Object { $_.tag -notmatch '^segment-\d+$' } | Select-Object -ExpandProperty tag)
+        $currentTags = $($response[$i].tags | Where-Object { $_.tag -notmatch '^segment-\d+$' } | Select-Object -ExpandProperty tag)
 
         # Add the new [segment-n] tag
-        $tagSet = $tagSet + $segmentTag
+        $tagSet = @($currentTags) + $segmentTag
 
         # Create the patch object for this system
         $systemPatch = @{
