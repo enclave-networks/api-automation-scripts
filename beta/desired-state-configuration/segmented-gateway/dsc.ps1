@@ -56,29 +56,6 @@ $contentType = "application/json";
 
 # ------------
 
-function Invoke-EnclaveApi {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$Uri,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Method,
-
-        [Parameter(Mandatory = $false)]
-        [object]$Body
-    )
-
-    try {
-        if ($null -ne $Body) {
-            return Invoke-RestMethod -ContentType $contentType -Method $Method -Uri $Uri -Headers $headers -Body ($Body | ConvertTo-Json -Depth 10)
-        } else {
-            return Invoke-RestMethod -ContentType $contentType -Method $Method -Uri $Uri -Headers $headers
-        }
-    } catch {
-        throw "Request to $Uri failed with error: $($_.Exception.Message)"
-    }
-}
-
 function Invoke-PaginatedApi {
     param (
         [Parameter(Mandatory = $true)]
@@ -141,15 +118,17 @@ if ($dryrun) {
 # ------------
 # Arrange System Tags
 
+Write-Host "Assigning system tags..."
+
 # Find all systems with the userMarkerTag
-$response = Invoke-PaginatedApi -Method Get -Uri "https://api.enclave.io/org/$orgId/systems?search=tags%3A%20$userMarkerTag"
+$response = Invoke-PaginatedApi -Method Get -Uri "https://api.enclave.io/org/$orgId/systems?per_page=200&search=tags%3A%20$userMarkerTag"
 
 if ($response.Count -le 0) {
-    Write-Host "No systems tagged [$userMarkerTag]."
+    Write-Host "  No systems tagged [$userMarkerTag]."
 } else {
-    Write-Host "Found $($response.Count) systems tagged [$userMarkerTag]. Adding a new [segment-n] tag to each..."
-
     $itemsPerSegment = [math]::Ceiling($response.Count / $desiredUserSegments)
+
+    Write-Host "  Found $($response.Count) systems tagged [$userMarkerTag]. Adding a new [segment-n] tag to each across $itemsPerSegment segments..."
 
     # Iterate over the systems and tag each with a new [segment-n] tag
     for ($i = 0; $i -lt $response.Count; $i++)
@@ -175,7 +154,7 @@ if ($response.Count -le 0) {
         }
 
         # Display the updated tagset
-        Write-Output "Updating system tagset $systemId ($description) to $(($systemPatch.tags | ForEach-Object { "[$_]" }) -join ', ')"
+        Write-Output "  Updating system tagset $systemId ($description) to $(($systemPatch.tags | ForEach-Object { "[$_]" }) -join ', ')"
 
         # Patch the system
         if (-not $dryrun) {
@@ -187,13 +166,15 @@ if ($response.Count -le 0) {
 # ------------
 # Arrange System Gateways
 
+Write-Host "Assigning gateways..."
+
 # Find all systems with the gatewayMarkerTag
 $response = Invoke-PaginatedApi -Method Get -Uri "https://api.enclave.io/org/$orgId/systems?search=tags%3A%20$gatewayMarkerTag"
 
 if ($response.Count -le 0) {
-    Write-Host "No systems tagged [$gatewayMarkerTag]."
+    Write-Host "  No systems tagged [$gatewayMarkerTag]."
 } else {
-    Write-Host "Found $($response.Count) systems tagged [$gatewayMarkerTag]. Configuring each system to act as a gateway..."
+    Write-Host "  Found $($response.Count) systems tagged [$gatewayMarkerTag]. Configuring each system to act as a gateway..."
 
     # Iterate over the systems and enable each to act as a gateway overwriting any existing routes.
     for ($i = 0; $i -lt $response.Count; $i++)
@@ -220,7 +201,7 @@ if ($response.Count -le 0) {
         }
         
         # Display the updated tagset
-        Write-Output "Updating system $systemId ($description) to act as a gateway, setting routes: $gatewaySubnets"
+        Write-Output "  Updating system $systemId ($description) to act as a gateway, setting routes: $gatewaySubnets"
 
         # Patch the system
         if (-not $dryrun) {
@@ -345,7 +326,11 @@ foreach ($policyModel in $policiesModel)
 {
     # create policy
     Write-Host "  Creating policy: $($policyModel.description)"
-    $null = Invoke-PaginatedApi -Method Post -Uri "https://api.enclave.io/org/$orgId/policies" -Body $policyModel
+    
+    # Patch the system
+    if (-not $dryrun) {
+        $null = Invoke-PaginatedApi -Method Post -Uri "https://api.enclave.io/org/$orgId/policies" -Body $policyModel
+    }
     
 }
 
