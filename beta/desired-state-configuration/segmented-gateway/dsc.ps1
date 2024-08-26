@@ -154,7 +154,7 @@ if ($response.Count -le 0) {
         }
 
         # Display the updated tagset
-        Write-Output "  Updating system tagset $systemId ($description) to $(($systemPatch.tags | ForEach-Object { "[$_]" }) -join ', ')"
+        Write-Output "  #$i- Updating system tagset $systemId ($description) to $(($systemPatch.tags | ForEach-Object { "[$_]" }) -join ', ')"
 
         # Patch the system
         if (-not $dryrun) {
