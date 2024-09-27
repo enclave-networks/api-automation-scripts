@@ -19,7 +19,7 @@ This script accepts ITGlue service DNS records as inputs (e.g. `customer1.eu.itg
 You should schedule this script to run on a regular basis as ITGlue service IP addresses may change. We recommend this script is run by your RMM platform or as an Azure Function on a recurring timer. You should use the platform's secrets management capability to safely provide your `<apiKey>` to the script.
 
 ```bash
-.\gateway-policy-dns-update.ps1 -orgId <orgId> `
+.\gateway-policy-by-dns.ps1 -orgId <orgId> `
                                 -apiKey <apiKey> `
                                 -policyName <policyName> `
                                 -dnsNames <dnsname1>, `
@@ -37,7 +37,7 @@ For example, if your tenant name is `customer1` you may use the script as follow
 
 
 ```bash
-.\gateway-policy-dns-update.ps1 -orgId <orgId> `
+.\gateway-policy-by-dns.ps1 -orgId <orgId> `
                                 -apiKey <apiKey> `
                                 -policyName <policyName> `
                                 -dnsNames customer1.eu.itglue.com, `
