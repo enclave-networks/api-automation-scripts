@@ -1,4 +1,4 @@
-# Filter an Enclave Gateway Policy to provide a route to ITGlue IP addresses
+# Filter an Enclave Gateway Policy to exclude routing traffic for specific DNS names
 
 Enclave can be used to route all Internet traffic via systems acting as Enclave Gateways. This usually means that each Enclave Gateway is configured to provide a route to `0.0.0.0/0` for all connected clients, but sometimes you may not want all traffic to traverse the gateway hosts.
 
@@ -24,7 +24,7 @@ PS C:\> gateway-policy-by-range-except.ps1 -orgId <orgId> `
                                            -dnsNames <dnsname1>, `
                                                      <dnsname2>, `
                                                      <dnsnameX> `
-                                        -test
+                                           -test
 
 ```
 
@@ -41,7 +41,7 @@ PS C:\> gateway-policy-by-range-except.ps1 -orgId <orgId> `
                                            -policyName <policyName> `
                                            -dnsNames microsoft.com, `
                                                      google.com `
-                                        -test
+                                           -test
 ```
 
 ## Requirements
