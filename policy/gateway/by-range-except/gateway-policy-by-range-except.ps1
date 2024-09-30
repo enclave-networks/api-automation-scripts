@@ -26,6 +26,9 @@ if ($apiKey -eq "") {
     return;
 }
 
+$currentDateTime = Get-Date -Format "yyyy-MM-dd"
+$notes = "Auto-provisioned by API on $currentDateTime, do not delete."
+
 $headers = @{Authorization = "Bearer $apiKey"}
 $contentType = "application/json";
 
@@ -201,8 +204,8 @@ function Get-RangesWithExclusions {
         $startIP = Convert-IntegerToIP -uint $_.Start
         $endIP = Convert-IntegerToIP -uint $_.End
         [PSCustomObject]@{
-            StartIP = $startIP
-            EndIP   = $endIP
+            ipRange = "$startIP - $endIP"
+            notes = "$notes"
         }
     }
 
@@ -225,7 +228,6 @@ function Main()
         $ranges = Get-RangesWithExclusions -integerExclusions $exclusions
         $ranges | Format-Table -AutoSize
 
-        
         $response = Invoke-PaginatedApi -Method Get -Uri "https://api.enclave.io/org/$orgId/policies?search=$policyName";
 
         if ($response.total -eq 0)
@@ -239,30 +241,28 @@ function Main()
             return;
         }
 
-        $policyId = $response.items[0].id;
-
-        Write-Host "Found policy $policyName with id $policyId."
+        Write-Host "Found policy $($response.description) with id $($response.id)"
 
         $policyPatch = @{
-            "gatewayAllowedIpRanges" = $dnsAddresses
-        } | ConvertTo-Json
+            notes = "$notes Subnet filtering applied for $dnsNames"
+            "gatewayAllowedIpRanges" = $ranges
+        }
 
         if ($test)
         {
-            Write-Host "Test mode enabled; not updating policy."
-            Write-Host "Would have updated policy $policyId with the following patch:"
-            Write-Host $policyPatch
+            Write-Host "Test mode enabled; not updating policy. Would have updated policy $($response.id) with the following patch:"
+            Write-Host $($policyPatch | ConvertTo-Json -Depth 10)
         }
         else
         {
-            Invoke-PaginatedApi -Method Patch -Uri "https://api.enclave.io/org/$orgId/policies/$policyId" -Body $policyPatch
+            Invoke-PaginatedApi -Method Patch -Uri "https://api.enclave.io/org/$orgId/policies/$($response.id)" -Body $policyPatch
 
-            Write-Host "Updated policy with $($dnsAddresses.Count) IP addresses."
+            Write-Host "Updated policy with $($ranges.Count) IP ranges to filter out $dnsNames."
         }
     }
     catch
     {
-        Write-Host "Could not update policies: $($_.Exception.Message)"
+        Write-Host "$($_.Exception.Message) at line $($_.InvocationInfo.ScriptLineNumber)"
     }
 }
 
