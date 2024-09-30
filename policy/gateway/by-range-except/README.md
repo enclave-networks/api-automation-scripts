@@ -17,13 +17,13 @@ This script accepts a set of DNS records as inputs (e.g. `google.com, microsoft.
 
 You should schedule this script to run on a regular basis as IP addresses may change. We recommend this script is run by your RMM platform or as an Azure Function on a recurring timer. You should use the platform's secrets management capability to safely provide your `<apiKey>` to the script.
 
-```bash
-.\gateway-policy-by-range-except.ps1 -orgId <orgId> `
-                                        -apiKey <apiKey> `
-                                        -policyName <policyName> `
-                                        -dnsNames <dnsname1>, `
-                                                  <dnsname2>, `
-                                                  <dnsnameX> `
+```powershell
+PS C:\> gateway-policy-by-range-except.ps1 -orgId <orgId> `
+                                           -apiKey <apiKey> `
+                                           -policyName <policyName> `
+                                           -dnsNames <dnsname1>, `
+                                                     <dnsname2>, `
+                                                     <dnsnameX> `
                                         -test
 
 ```
@@ -35,12 +35,12 @@ Remove the `-test` argument to make the API call and change the Enclave policy c
 For example, if your tenant name is `customer1` you may use the script as follows:
 
 
-```bash
-.\gateway-policy-by-range-except.ps1 -orgId <orgId> `
-                                        -apiKey <apiKey> `
-                                        -policyName <policyName> `
-                                        -dnsNames microsoft.com, `
-                                                  google.com, `
+```powershell
+PS C:\> gateway-policy-by-range-except.ps1 -orgId <orgId> `
+                                           -apiKey <apiKey> `
+                                           -policyName <policyName> `
+                                           -dnsNames microsoft.com, `
+                                                     google.com `
                                         -test
 ```
 
