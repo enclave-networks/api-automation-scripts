@@ -97,7 +97,7 @@ show_nameservers() {
   if command -v nmcli &> /dev/null; then
     if nmcli dev show &> /dev/null; then
       nmcli dev show | awk '/DNS/ {print $2}' | while read -r ns; do
-        echo -e "IPv4	$ns"
+        echo -e "IPv4           $ns\n"
       done
       return
     fi
@@ -106,7 +106,7 @@ show_nameservers() {
   if command -v resolvectl &> /dev/null; then
     if resolvectl status &> /dev/null; then
       resolvectl status | awk '/DNS Servers/ {print $3}' | while read -r ns; do
-        echo -e "IPv4	$ns"
+        echo -e "IPv4           $ns\n"
       done
       return
     fi
@@ -115,7 +115,7 @@ show_nameservers() {
   if [ -f /etc/resolv.conf ]; then
     if grep "^nameserver" /etc/resolv.conf &> /dev/null; then
       grep "^nameserver" /etc/resolv.conf | awk '{print $2}' | while read -r ns; do
-        echo -e "IPv4	$ns\n"
+        echo -e "IPv4           $ns\n"
       done
       return
     fi
