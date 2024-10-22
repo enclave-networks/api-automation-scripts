@@ -1,6 +1,6 @@
 # Produce a report of active Enclave systems for a specific tenant
 
-This PowerShell script takes an Enclave `Personal Access Token` and `Organisation Id` to generate a tabular report of the systems enrolled to the tenant. This can be useful to determine which systems have not connected to the platform for extended periods of time, or which systems are running versions of Enclave and need to be updated.
+This PowerShell script takes an Enclave `Personal Access Token` and `Organisation Id` to generate a tabular report of the systems enrolled to the tenant. This can be useful to determine which systems have not connected to the platform for extended periods of time, which systems are running versions of Enclave that may need to be updated, or if any enrolled systems have duplicate virtual IP addresses assigned.
 
 Example output:
 
