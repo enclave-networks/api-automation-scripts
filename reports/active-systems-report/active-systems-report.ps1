@@ -55,7 +55,7 @@ $systems = @()
 
 do {
     $response = Invoke-RestMethod -ContentType $contentType -Method Get -Uri $uri -Headers $headers
-    $systems += $response.items | Select-Object systemId, state, lastSeen, enrolledAt, enclaveVersion, hostname, platformType, description
+    $systems += $response.items | Select-Object systemId, state, lastSeen, enrolledAt, enclaveVersion, hostname, platformType, description, virtualAddress
 
     $uri = if ($null -ne $response.links.next -and $response.links.next -ne "") { $response.links.next } else { $null }
 } while ($uri)
@@ -68,6 +68,6 @@ foreach ($system in $systems) {
     $system.enrolledAt = Format-DateTime -dateTime $system.enrolledAt
 }
 
-$systems | Format-Table -Property systemId, state, platformType, lastSeen, enclaveVersion, hostname, enrolledAt, description -AutoSize
+$systems | Format-Table -Property systemId, virtualAddress, state, platformType, lastSeen, enclaveVersion, hostname, enrolledAt, description -AutoSize
 
 Write-Output "System count: $($systems.Count)`n"
