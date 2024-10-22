@@ -60,7 +60,7 @@ do {
     $uri = if ($null -ne $response.links.next -and $response.links.next -ne "") { $response.links.next } else { $null }
 } while ($uri)
 
-
+# Sort systems by lastSeen date for the initial output
 $systems = $systems | Sort-Object lastSeen
 
 foreach ($system in $systems) {
@@ -68,6 +68,29 @@ foreach ($system in $systems) {
     $system.enrolledAt = Format-DateTime -dateTime $system.enrolledAt
 }
 
+# Display the table of systems
 $systems | Format-Table -Property systemId, virtualAddress, state, platformType, lastSeen, enclaveVersion, hostname, enrolledAt, description -AutoSize
 
+# Count of total systems
 Write-Output "System count: $($systems.Count)`n"
+
+# Find duplicates based on virtualAddress
+$duplicateVirtualAddresses = $systems | Group-Object -Property virtualAddress | Where-Object { $_.Count -gt 1 }
+
+if ($duplicateVirtualAddresses)
+{
+    # Extract the list of duplicate virtual addresses
+    $duplicateVirtualAddressesList = $duplicateVirtualAddresses | Select-Object -ExpandProperty Name
+
+    # Filter systems that have duplicate virtualAddress
+    $duplicateSystems = $systems | Where-Object { $duplicateVirtualAddressesList -contains $_.virtualAddress }
+
+    Write-Host "Warning: Duplicate virtual addresses detected between the following systems:" -ForegroundColor Yellow
+
+    # Sort by virtualAddress and display only systemId and virtualAddress
+    $duplicateSystems | Sort-Object virtualAddress | Format-Table -Property systemId, virtualAddress, state, hostname -AutoSize
+
+    Write-Host "Consider using the set-config command to resolve the duplicate IP address conflict on affected systems.`n" -ForegroundColor Yellow
+    Write-Host "  C:\> enclave set-config virtual-ip x.x.x.x`n"
+    Write-Host "For more information, please refer to https://docs.enclave.io/agent/config/#virtual-ip`n" -ForegroundColor Yellow
+}
