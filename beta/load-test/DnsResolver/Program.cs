@@ -27,9 +27,30 @@ class DnsResolverProgram
             return;
         }
 
-        while (true)
+        // Create a CancellationTokenSource to manage graceful shutdown
+        using CancellationTokenSource cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (sender, e) =>
         {
-            await TakeSlice(30);
+            e.Cancel = true; // Prevent the process from terminating immediately.
+            cts.Cancel();     // Trigger cancellation to start graceful shutdown.
+            Console.WriteLine("Cancellation requested... shutting down gracefully.");
+        };
+
+        try
+        {
+            // Pass the cancellation token to the loop for graceful shutdown
+            while (!cts.Token.IsCancellationRequested)
+            {
+                await TakeSlice(30, cts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Operation was canceled.");
+        }
+        finally
+        {
+            Console.WriteLine("Shutdown complete.");
         }
     }
 
@@ -57,7 +78,7 @@ class DnsResolverProgram
         return allHostnames.Count > 0;
     }
 
-    static async Task TakeSlice(int sliceSize)
+    static async Task TakeSlice(int sliceSize, CancellationToken cancellationToken)
     {
         if (allHostnames.Count < sliceSize)
         {
@@ -70,14 +91,14 @@ class DnsResolverProgram
             .Take(sliceSize) // Take the desired number of elements
             .ToList();
 
-        // Resolve in parallel
-        await Parallel.ForEachAsync(hostnamesToResolve, async (hostname, cancellationToken) =>
+        // Resolve in parallel, respecting the cancellation token
+        await Parallel.ForEachAsync(hostnamesToResolve, cancellationToken, async (hostname, token) =>
         {
-            await ResolveHostnameAsync(hostname);
+            await ResolveHostnameAsync(hostname, token);
         });
     }
 
-    static async Task ResolveHostnameAsync(string hostname)
+    static async Task ResolveHostnameAsync(string hostname, CancellationToken cancellationToken)
     {
         try
         {
@@ -90,7 +111,7 @@ class DnsResolverProgram
                 Console.WriteLine($"{stopwatch.Elapsed.TotalSeconds,12}s #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is OperationCanceledException))
         {
             lock (_consoleLock)
             {
