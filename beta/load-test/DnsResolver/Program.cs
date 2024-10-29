@@ -18,6 +18,7 @@ class DnsResolverProgram
     static Stopwatch stopwatch = Stopwatch.StartNew();
     static List<string> allHostnames = new List<string>();
     static Random random = new Random();
+    static ConsoleColor originalColor = Console.ForegroundColor;
 
     static async Task Main(string[] args)
     {
@@ -121,9 +122,8 @@ class DnsResolverProgram
         }
         finally
         {
+            Console.ForegroundColor = originalColor;
             Interlocked.Increment(ref counter);
         }
-
-        Console.ForegroundColor = ConsoleColor.Black;
     }
 }
