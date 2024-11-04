@@ -1,49 +1,60 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text;
 
 class DnsResolverProgram
 {
-    //static string hostnamesFile = "../hosts.txt";
-    static string hostnamesFile = "../tranco-list-top-1m.csv";
-    static int maxLines = 20_000;
-    static int counter = 0;
-    static object _consoleLock = new object();
-    static Stopwatch stopwatch = Stopwatch.StartNew();
-    static List<string> allHostnames = new List<string>();
-    static Random random = new Random();
-    static ConsoleColor originalColor = Console.ForegroundColor;
+    //private static string hostnamesFile = "../hosts.txt";
+    private static readonly string hostnamesFile = "../tranco-list-top-1m.csv";
+    private static readonly int maxLines = 20_000;
+    private static readonly object _consoleLock = new();
+    private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
+    private static readonly Random random = new();
+    private static readonly ConsoleColor _originalColor = Console.ForegroundColor;
+    private static readonly CancellationTokenSource cts = new();
 
+    private static int queryCounter = 0;
+    private static List<string> allHostnames = [];
+    
     static async Task Main(string[] args)
     {
-        // Load the hostnames only once to reduce redundant I/O
-        if (!LoadHostnames())
-        {
-            return;
-        }
+        var (concurrency, interval) = ParseArguments(args);
 
-        // Create a CancellationTokenSource to manage graceful shutdown
-        using CancellationTokenSource cts = new CancellationTokenSource();
+        if (!LoadHostnames()) return;
+
         Console.CancelKeyPress += (sender, e) =>
         {
-            e.Cancel = true; // Prevent the process from terminating immediately.
-            cts.Cancel();     // Trigger cancellation to start graceful shutdown.
+            e.Cancel = true;  // Allow for graceful shutdown.
+            cts.Cancel();     // Trigger cancellation.
+
             Console.WriteLine("Cancellation requested... shutting down gracefully.");
         };
 
+        var tcs = new TaskCompletionSource<bool>();
+
+        cts.Token.Register(() => tcs.TrySetResult(true));
+
         try
         {
-            // Pass the cancellation token to the loop for graceful shutdown
-            while (!cts.Token.IsCancellationRequested)
+            var timer = new Timer(_ =>
             {
-                await TakeSlice(30, cts.Token);
-            }
+                var hostnames = TakeSlice(concurrency);
+
+                for (int i = 0; i < concurrency; i++)
+                {
+                    var hostname = hostnames[i];
+
+                    _ = Task.Run(async () =>
+                    {
+                        await ResolveHostnameAsync(hostname, cts.Token);
+                    });
+                }
+            }, null, 0, interval);
+
+            await tcs.Task;
+
+            timer.Dispose();
         }
         catch (OperationCanceledException)
         {
@@ -53,6 +64,40 @@ class DnsResolverProgram
         {
             Console.WriteLine("Shutdown complete.");
         }
+    }
+
+    private static (int queryConcurrency, int queryInterval) ParseArguments(string[] args)
+    {
+        int queryConcurrency = 1;
+        int queryInterval = 1000; // milliseconds
+
+        foreach (string arg in args)
+        {
+            if (arg.StartsWith("--concurrency="))
+            {
+                if (int.TryParse(arg.Substring("--concurrency=".Length), out int value))
+                {
+                    queryConcurrency = value;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid value for Concurrency. Must be an integer. Using default value 1.");
+                }
+            }
+            else if (arg.StartsWith("--interval="))
+            {
+                if (int.TryParse(arg.Substring("--interval=".Length), out int value))
+                {
+                    queryInterval = value;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid value for Interval. Must be an integer. Using default value 1000 ms.");
+                }
+            }
+        }
+
+        return (queryConcurrency, queryInterval);
     }
 
     static bool LoadHostnames()
@@ -79,51 +124,52 @@ class DnsResolverProgram
         return allHostnames.Count > 0;
     }
 
-    static async Task TakeSlice(int sliceSize, CancellationToken cancellationToken)
+    static List<string> TakeSlice(int sliceSize)
     {
         if (allHostnames.Count < sliceSize)
         {
             Console.WriteLine("Slice size exceeds total hostnames in file.");
-            return;
+            
+            return [];
         }
 
         var hostnamesToResolve = allHostnames
             .OrderBy(_ => random.Next()) // Shuffle the list randomly
-            .Take(sliceSize) // Take the desired number of elements
+            .Take(sliceSize)
             .ToList();
 
-        // Resolve in parallel, respecting the cancellation token
-        await Parallel.ForEachAsync(hostnamesToResolve, cancellationToken, async (hostname, token) =>
-        {
-            await ResolveHostnameAsync(hostname, token);
-        });
+        return hostnamesToResolve;
     }
 
     static async Task ResolveHostnameAsync(string hostname, CancellationToken cancellationToken)
     {
+        var success = false;
+        var output = new StringBuilder();
+        var queryDuration = Stopwatch.StartNew();
+        var counter = Interlocked.Increment(ref queryCounter);
+
         try
         {
-            var addresses = await Dns.GetHostAddressesAsync(hostname);
+            var addresses = await Dns.GetHostAddressesAsync(hostname, cancellationToken);
+            
             var ipAddresses = addresses.Where(addr => addr.AddressFamily == AddressFamily.InterNetwork).Select(addr => addr.ToString());
 
-            lock (_consoleLock)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.WriteLine($"{stopwatch.Elapsed.TotalSeconds,12}s #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
-            }
+            success = true;
+
+            output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
         }
-        catch (Exception ex) when (!(ex is OperationCanceledException))
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            lock (_consoleLock)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine($"{stopwatch.Elapsed.TotalSeconds,12}s #{counter,-6} {hostname,-64}: {ex.Message}");
-            }
+            output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {ex.Message}");
         }
         finally
         {
-            Console.ForegroundColor = originalColor;
-            Interlocked.Increment(ref counter);
+            lock (_consoleLock)
+            {
+                Console.ForegroundColor = (success == true) ? ConsoleColor.DarkGreen : ConsoleColor.DarkRed;
+                Console.WriteLine(output);
+                Console.ForegroundColor = _originalColor;
+            }
         }
     }
 }
