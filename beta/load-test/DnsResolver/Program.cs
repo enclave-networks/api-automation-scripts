@@ -18,7 +18,7 @@ class DnsResolverProgram
     
     static async Task Main(string[] args)
     {
-        var (concurrency, interval) = ParseArguments(args);
+        var (concurrency, interval, timeout) = ParseArguments(args);
 
         if (!LoadHostnames()) return;
 
@@ -35,7 +35,7 @@ class DnsResolverProgram
         try
         {
             // --interval=n
-            var timer = new Timer(async _ =>
+            var timer = new Timer(_ =>
             {
                 var hostnames = TakeSlice(concurrency);
 
@@ -44,8 +44,14 @@ class DnsResolverProgram
                 {
                     var hostname = hostnames[i];
 
-                    await ResolveHostnameAsync(hostname, cts.Token);
+                    _ = Task.Run(async () =>
+                    {
+                        await ResolveHostnameAsync(hostname, timeout, cts.Token);
+                    });
                 }
+
+                Console.WriteLine($"{concurrency} queries queued.");
+
             }, null, 0, interval);
 
             await tcs.Task;
@@ -62,10 +68,11 @@ class DnsResolverProgram
         }
     }
 
-    private static (int queryConcurrency, int queryInterval) ParseArguments(string[] args)
+    private static (int queryConcurrency, int queryInterval, int timeout) ParseArguments(string[] args)
     {
         int queryConcurrency = 1;
         int queryInterval = 1000; // milliseconds
+        int queryTimeout = 3000; // milliseconds
 
         foreach (string arg in args)
         {
@@ -91,9 +98,20 @@ class DnsResolverProgram
                     Console.WriteLine("Invalid value for Interval. Must be an integer. Using default value 1000 ms.");
                 }
             }
+            else if (arg.StartsWith("--timeout="))
+            {
+                if (int.TryParse(arg.Substring("--timeout=".Length), out int value))
+                {
+                    queryTimeout = value;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid value for Timeout. Must be an integer. Using default value 3000 ms.");
+                }
+            }
         }
 
-        return (queryConcurrency, queryInterval);
+        return (queryConcurrency, queryInterval, queryTimeout);
     }
 
     static bool LoadHostnames()
@@ -137,22 +155,39 @@ class DnsResolverProgram
         return hostnamesToResolve;
     }
 
-    static async Task ResolveHostnameAsync(string hostname, CancellationToken cancellationToken)
+    static async Task ResolveHostnameAsync(string hostname, int timeout, CancellationToken cancellationToken)
     {
         var success = false;
+        
         var output = new StringBuilder();
+        
         var queryDuration = Stopwatch.StartNew();
+        
         var counter = Interlocked.Increment(ref queryCounter);
+
+        // --timeout=n
+        var timeoutTask = Task.Delay(TimeSpan.FromMilliseconds(timeout), cancellationToken);
+        
+        var resolverTask = Dns.GetHostAddressesAsync(hostname, cancellationToken);
 
         try
         {
-            var addresses = await Dns.GetHostAddressesAsync(hostname, cancellationToken);
             
-            var ipAddresses = addresses.Select(addr => addr.ToString());
+            var completedTask = await Task.WhenAny(resolverTask, timeoutTask);
 
-            success = true;
+            if (completedTask == resolverTask)
+            {
+                var addresses = await resolverTask;
+                var ipAddresses = addresses.Select(addr => addr.ToString());
 
-            output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
+                success = true;
+
+                output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
+            }
+            else
+            {
+                output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: Query timeout");
+            }
         }
         catch (OperationCanceledException)
         {
