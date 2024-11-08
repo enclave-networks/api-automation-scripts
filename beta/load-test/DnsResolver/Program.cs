@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 
 class DnsResolverProgram
@@ -25,10 +24,8 @@ class DnsResolverProgram
 
         Console.CancelKeyPress += (sender, e) =>
         {
-            e.Cancel = true;  // Allow for graceful shutdown.
-            cts.Cancel();     // Trigger cancellation.
-
-            Console.WriteLine("Cancellation requested... shutting down gracefully.");
+            e.Cancel = true;  // allow graceful shutdown
+            cts.Cancel();     // trigger cancellation
         };
 
         var tcs = new TaskCompletionSource<bool>();
@@ -37,18 +34,17 @@ class DnsResolverProgram
 
         try
         {
-            var timer = new Timer(_ =>
+            // --interval=n
+            var timer = new Timer(async _ =>
             {
                 var hostnames = TakeSlice(concurrency);
 
+                // --concurrency=n
                 for (int i = 0; i < concurrency; i++)
                 {
                     var hostname = hostnames[i];
 
-                    _ = Task.Run(async () =>
-                    {
-                        await ResolveHostnameAsync(hostname, cts.Token);
-                    });
+                    await ResolveHostnameAsync(hostname, cts.Token);
                 }
             }, null, 0, interval);
 
@@ -152,13 +148,13 @@ class DnsResolverProgram
         {
             var addresses = await Dns.GetHostAddressesAsync(hostname, cancellationToken);
             
-            var ipAddresses = addresses.Where(addr => addr.AddressFamily == AddressFamily.InterNetwork).Select(addr => addr.ToString());
+            var ipAddresses = addresses.Select(addr => addr.ToString());
 
             success = true;
 
             output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException or TaskCanceledException)
         {
             output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {ex.Message}");
         }
