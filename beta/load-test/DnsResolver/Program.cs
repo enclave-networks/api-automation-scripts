@@ -154,7 +154,11 @@ class DnsResolverProgram
 
             output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {string.Join(", ", ipAddresses)}");
         }
-        catch (Exception ex) when (ex is not OperationCanceledException or TaskCanceledException)
+        catch (OperationCanceledException)
+        {
+            // expected, swallow
+        }
+        catch (Exception ex)
         {
             output.Append($"Elapsed: {stopwatch.Elapsed.TotalSeconds,12}s, QueryTime: {queryDuration.Elapsed.TotalMilliseconds,12}ms, Counter: #{counter,-6} {hostname,-64}: {ex.Message}");
         }
