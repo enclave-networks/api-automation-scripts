@@ -30,6 +30,29 @@ $domains = @(
     }
 )
 
+# Execute diagnostic commands
+$psCmdlets = @(
+    "Get-NetAdapter | Format-Table -AutoSize",
+    "Get-NetIPConfiguration | Format-Table -AutoSize",
+    "Get-DnsClientServerAddress | Format-Table -AutoSize",
+    "Get-DnsClient | Format-Table -AutoSize",
+    "Get-DnsClientGlobalSetting",
+    "Get-NetIPInterface | Sort-Object InterfaceIndex | Format-Table -AutoSize"
+)
+
+$commands = @(
+    "enclave status",
+    "enclave self-test",
+    "route print",
+    "nslookup discover.enclave.io",
+    "nslookup discover.enclave.io 8.8.8.8",
+    "nslookup google.com",
+    "nslookup google.com 1.1.1.1",
+    "nslookup google.com 8.8.8.8",
+    "ping 8.8.8.8",
+    "ping 1.1.1.1"
+)
+
 function Get-NameserversWithInterfaceNames {
     Write-Host "Nameservers"
     $onlineAdapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -191,4 +214,16 @@ foreach ($domain in $domains) {
         $formattedResult = Format-Output -protocol $result.Protocol -address $result.Address -status $result.Status
         Write-Host $formattedResult
     }
+}
+
+Write-Host "`nExecuting diagnostic commands..."
+
+foreach ($cmd in $psCmdlets) {
+    Write-Host "`nRunning: $cmd"
+    Invoke-Expression $cmd
+}
+
+foreach ($cmd in $commands) {
+    Write-Host "`nRunning: $cmd"
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -NoNewWindow -Wait
 }
