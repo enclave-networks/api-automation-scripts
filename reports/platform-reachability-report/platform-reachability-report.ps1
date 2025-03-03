@@ -44,6 +44,7 @@ $commands = @(
     "enclave status",
     "enclave self-test",
     "route print",
+    "ipconfig /all",
     "nslookup discover.enclave.io",
     "nslookup discover.enclave.io 8.8.8.8",
     "nslookup google.com",
