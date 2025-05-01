@@ -108,10 +108,7 @@ class DnsResolverProgram
             // --interval=n
             var timer = new Timer(_ =>
             {
-                if (isPaused)
-                {
-                    return;
-                }
+                if (isPaused) return;
 
                 var hostnames = TakeSlice(concurrency);
 
@@ -331,6 +328,7 @@ class DnsResolverProgram
         catch (Exception ex)
         {
             Interlocked.Increment(ref _queryExceptionCount);
+
             errorMessage = ex.Message;
         }
         finally
@@ -365,7 +363,7 @@ class DnsResolverProgram
                 }
                 else
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}]    {hostname,-64} {duration,8:N0} ms {string.Join(", ", answer.Select(item => item.Trim()))}");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}]    {hostname,-64} {duration,8:N0} ms [{string.Join(", ", answer.Select(item => item.Trim()))}]");
                 }
             }
         }
