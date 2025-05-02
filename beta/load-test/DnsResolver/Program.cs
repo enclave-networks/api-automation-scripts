@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using DnsResolver;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 
@@ -45,11 +46,11 @@ class DnsResolverProgram
 
     private static async Task Main(string[] args)
     {
-        var (concurrency, interval, timeout, sourceList, verbose) = ParseArguments(args);
+        var options = ParseArguments(args);
 
-        isVerbose = verbose;
+        isVerbose = options.IsVerbose;
 
-        if (!LoadDnsNameSourceList(sourceList)) return;
+        if (!LoadDnsNameSourceList(options.SourceListFile)) return;
 
         Console.CancelKeyPress += (sender, e) =>
         {
@@ -65,17 +66,19 @@ class DnsResolverProgram
         cts.Token.Register(() => tcs.TrySetResult(true));
 
         // setup reporting timer
-        _dnsReportTimer = new Timer(DnsQueryVolumeReport, null, 0, interval);
+        _dnsReportTimer = new Timer(DnsQueryVolumeReport, null, 0, options.QueryInterval);
 
         try
         {
             // Calculate queries per interval based on concurrency and interval.
             // Each thread produces one query per interval.
-            double queriesPerSecond = concurrency * (1000.0 / interval);
+            double queriesPerSecond = options.QueryConcurrency * (1000.0 / options.QueryInterval);
 
-            Console.WriteLine();
             Console.WriteLine($"Press 'P' to toggle scheduling (currently ON). Press 'V' to toggle verbose output. Ctrl+C to stop");
-            Console.WriteLine($"Query rate: {queriesPerSecond:N1} queries/second");
+            Console.WriteLine();
+            Console.WriteLine($"  Query rate . . . . : {queriesPerSecond:N0} {(queriesPerSecond == 1 ? "query" : "queries")}/second");
+            Console.WriteLine($"  Query timeout. . . : {options.QueryTimeout:N0} ms");
+            Console.WriteLine($"  Test duration. . . : {(options.Duration > 0 ? $"{options.Duration:N0} ms" : "Until stopped")}");
             Console.WriteLine();
 
             // Start a background thread to monitor for key presses.
@@ -105,15 +108,20 @@ class DnsResolverProgram
                 }
             }) { IsBackground = true }.Start();
 
+            if (options.Duration > 0)
+            {
+                cts.CancelAfter(options.Duration);
+            }
+
             // --interval=n
             var timer = new Timer(_ =>
             {
                 if (isPaused) return;
 
-                var hostnames = TakeSlice(concurrency);
+                var hostnames = TakeSlice(options.QueryConcurrency);
 
                 // --concurrency=n
-                for (int i = 0; i < concurrency; i++)
+                for (int i = 0; i < options.QueryConcurrency; i++)
                 {
                     Interlocked.Increment(ref _totalDnsQueriesScheduled);
 
@@ -121,10 +129,10 @@ class DnsResolverProgram
 
                     _ = Task.Run(async () =>
                     {
-                        await ResolveHostnameAsync(hostname, timeout, cts.Token);
+                        await ResolveHostnameAsync(hostname, options.QueryTimeout, cts.Token);
                     }, cts.Token);
                 }
-            }, null, 0, interval);
+            }, null, 0, options.QueryInterval);
 
             await tcs.Task;
 
@@ -138,80 +146,102 @@ class DnsResolverProgram
         }
         finally
         {
-            Console.WriteLine("Shutdown complete.");
+            Console.WriteLine("Finished.");
         }
     }
 
-    private static (int queryConcurrency, int queryInterval, int timeout, FileInfo? sourceListFile, bool verbose) ParseArguments(string[] args)
+    private static CommandLineOptions ParseArguments(string[] args)
     {
-        int queryConcurrency = 1;
-        int queryInterval = 1000; // milliseconds
-        int queryTimeout = 3000; // milliseconds
+        int duration = -1; 
+        int queryConcurrency = 1; // Default values
+        int queryInterval = 1000; // Milliseconds
+        int queryTimeout = 3000; // Milliseconds
         FileInfo? sourceListFile = null;
-        bool verbose = false;
+        bool isVerbose = false;
+
+        var argParsers = new Dictionary<string, Action<string>>
+        {
+            ["--duration="] = value => {
+                if (!int.TryParse(value, out int result))
+                    Console.WriteLine($"Invalid value for duration: {value}. Using default: {duration}");
+                else
+                    duration = result;
+            },
+
+            ["--concurrency="] = value => {
+                if (!int.TryParse(value, out int result))
+                    Console.WriteLine($"Invalid value for concurrency: {value}. Using default: {queryConcurrency}");
+                else
+                    queryConcurrency = result;
+            },
+
+            ["--interval="] = value => {
+                if (!int.TryParse(value, out int result))
+                    Console.WriteLine($"Invalid value for interval: {value}. Using default: {queryInterval} ms");
+                else
+                    queryInterval = result;
+            },
+
+            ["--timeout="] = value => {
+                if (!int.TryParse(value, out int result))
+                    Console.WriteLine($"Invalid value for timeout: {value}. Using default: {queryTimeout} ms");
+                else
+                    queryTimeout = result;
+            },
+
+            ["--list="] = value => {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    Console.WriteLine("A valid file path must be provided after the '--list=' parameter.");
+                    return;
+                }
+
+                if (!File.Exists(value))
+                {
+                    Console.WriteLine($"Specified --list file path does not exist: '{value}'. Exiting.");
+                    Environment.Exit(1);
+                    return;
+                }
+
+                // Use null-forgiving operator since we've already checked for null/empty
+                sourceListFile = new FileInfo(value!);
+            }
+        };
 
         foreach (string arg in args)
         {
-            if (arg.StartsWith("--concurrency="))
+            if (arg == "--verbose")
             {
-                if (int.TryParse(arg.AsSpan("--concurrency=".Length), out int value))
-                {
-                    queryConcurrency = value;
-                }
-                else
-                {
-                    Console.WriteLine("Invalid value for Concurrency. Must be an integer. Using default value 1.");
-                }
+                isVerbose = true;
+                continue;
             }
-            else if (arg.StartsWith("--interval="))
-            {
-                if (int.TryParse(arg.AsSpan("--interval=".Length), out int value))
-                {
-                    queryInterval = value;
-                }
-                else
-                {
-                    Console.WriteLine("Invalid value for Interval. Must be an integer. Using default value 1000 ms.");
-                }
-            }
-            else if (arg.StartsWith("--timeout="))
-            {
-                if (int.TryParse(arg.AsSpan("--timeout=".Length), out int value))
-                {
-                    queryTimeout = value;
-                }
-                else
-                {
-                    Console.WriteLine("Invalid value for Timeout. Must be an integer. Using default value 3000 ms.");
-                }
-            }
-            else if (arg.StartsWith("--list="))
-            {
-                string filename = arg["--list=".Length..].Trim();
 
-                if (!string.IsNullOrWhiteSpace(filename))
+            bool handled = false;
+            foreach (var parser in argParsers)
+            {
+                if (arg.StartsWith(parser.Key))
                 {
-                    if (File.Exists(filename))
-                    {
-                        sourceListFile = new FileInfo(filename);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Specified file path does not exist: '{filename}'");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("A valid file path must be provided after the '--list=' parameter.");
+                    string value = arg[parser.Key.Length..];
+                    parser.Value(value);
+                    handled = true;
+                    break;
                 }
             }
-            else if (arg.StartsWith("--verbose"))
+
+            if (!handled && !arg.StartsWith("--help"))
             {
-                verbose = true;
+                Console.WriteLine($"Unrecognized argument: {arg}");
             }
         }
 
-        return (queryConcurrency, queryInterval, queryTimeout, sourceListFile, verbose);
+        return new CommandLineOptions(
+            duration,
+            queryConcurrency,
+            queryInterval,
+            queryTimeout,
+            sourceListFile,
+            isVerbose
+        );
     }
 
     private static bool LoadDnsNameSourceList(FileInfo? sourceList)
@@ -233,7 +263,7 @@ class DnsResolverProgram
 
         if (sourceList == null)
         {
-            Console.WriteLine("Source list of hostnames not found.");
+            Console.WriteLine("Source list of hostnames not found. Provide a list of hostnames using --list=filename.txt");
             return false;
         }
         else
@@ -424,3 +454,4 @@ class DnsResolverProgram
         }
     }
 }
+
