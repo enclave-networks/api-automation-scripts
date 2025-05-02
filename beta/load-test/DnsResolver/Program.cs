@@ -63,10 +63,19 @@ class DnsResolverProgram
 
         var tcs = new TaskCompletionSource<bool>();
 
-        cts.Token.Register(() => tcs.TrySetResult(true));
+        cts.Token.Register(() => {
+            Console.WriteLine("Test duration elapsed, shutting down...");
+            tcs.TrySetResult(true);
+        });
 
         // setup reporting timer
         _dnsReportTimer = new Timer(DnsQueryVolumeReport, null, 0, options.QueryInterval);
+
+        // setup max duration timer
+        if (options.Duration > 0)
+        {
+            cts.CancelAfter(options.Duration);
+        }
 
         try
         {
@@ -107,11 +116,6 @@ class DnsResolverProgram
                     }
                 }
             }) { IsBackground = true }.Start();
-
-            if (options.Duration > 0)
-            {
-                cts.CancelAfter(options.Duration);
-            }
 
             // --interval=n
             var timer = new Timer(_ =>
