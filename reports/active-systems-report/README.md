@@ -2,6 +2,8 @@
 
 This PowerShell script takes an Enclave `Personal Access Token` and `Organisation Id` to generate a tabular report of the systems enrolled to the tenant. This can be useful to determine which systems have not connected to the platform for extended periods of time, which systems are running versions of Enclave that may need to be updated, or if any enrolled systems have duplicate virtual IP addresses assigned.
 
+The script can display results in a formatted table or export them to CSV format for further analysis.
+
 Example output:
 
 ```
@@ -63,6 +65,16 @@ Or you can provide arguments to the script:
 ```bash
 .\active-systems-report.ps1 -orgId <orgId> -apiKey <apiKey>
 ```
+
+### CSV Export
+
+To export the results to a CSV file instead of displaying them in a formatted table, use the `-csvPath` parameter:
+
+```bash
+.\active-systems-report.ps1 -orgId <orgId> -apiKey <apiKey> -csvPath "systems-report.csv"
+```
+
+If duplicate virtual IP addresses are detected, they will be saved to a separate file of the same name, with a `_duplicates.csv` suffix.
 
 ## Requirements
 

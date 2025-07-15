@@ -3,7 +3,10 @@ Param(
     [string]$orgId,
 
     [Parameter(Mandatory=$false)]
-    [string]$apiKey
+    [string]$apiKey,
+
+    [Parameter(Mandatory=$false)]
+    [string]$csvPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,8 +71,13 @@ foreach ($system in $systems) {
     $system.enrolledAt = Format-DateTime -dateTime $system.enrolledAt
 }
 
-# Display the table of systems
-$systems | Format-Table -Property systemId, virtualAddress, state, platformType, lastSeen, enclaveVersion, hostname, enrolledAt, description -AutoSize
+# Display or export the systems data
+if ($csvPath) {
+    $systems | Export-Csv -Path $csvPath -NoTypeInformation
+    Write-Output "Data exported to: $csvPath"
+} else {
+    $systems | Format-Table -Property systemId, virtualAddress, state, platformType, lastSeen, enclaveVersion, hostname, enrolledAt, description -AutoSize
+}
 
 # Count of total systems
 Write-Output "System count: $($systems.Count)`n"
@@ -87,8 +95,14 @@ if ($duplicateVirtualAddresses)
 
     Write-Host "Warning: Duplicate virtual addresses detected between the following systems:" -ForegroundColor Yellow
 
-    # Sort by virtualAddress and display only systemId and virtualAddress
-    $duplicateSystems | Sort-Object virtualAddress | Format-Table -Property systemId, virtualAddress, state, hostname -AutoSize
+    # Display or export duplicate systems
+    if ($csvPath) {
+        $duplicatesCsvPath = $csvPath -replace '\.csv$', '_duplicates.csv'
+        $duplicateSystems | Sort-Object virtualAddress | Export-Csv -Path $duplicatesCsvPath -NoTypeInformation
+        Write-Host "Duplicate systems exported to: $duplicatesCsvPath" -ForegroundColor Yellow
+    } else {
+        $duplicateSystems | Sort-Object virtualAddress | Format-Table -Property systemId, virtualAddress, state, hostname -AutoSize
+    }
 
     Write-Host "Consider using the set-config command to resolve the duplicate IP address conflict on affected systems.`n" -ForegroundColor Yellow
     Write-Host "  C:\> enclave set-config virtual-ip x.x.x.x`n"
