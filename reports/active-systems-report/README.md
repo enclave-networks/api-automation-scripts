@@ -74,7 +74,7 @@ To export the results to a CSV file instead of displaying them in a formatted ta
 .\active-systems-report.ps1 -orgId <orgId> -apiKey <apiKey> -csvPath "systems-report.csv"
 ```
 
-If duplicate virtual IP addresses are detected, they will be saved to a separate file of the same name, with a `_duplicates.csv` suffix.
+If duplicate virtual IP addresses are detected, they will be saved to a separate file of the same name, with a `.duplicates` suffix before the timestamp. Note that system tags and full OS version are exported to CSV but are not shown in the CLI table display.
 
 ## Requirements
 

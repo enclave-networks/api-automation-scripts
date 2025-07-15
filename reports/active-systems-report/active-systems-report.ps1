@@ -43,6 +43,7 @@ function Get-HumanReadableTimeDifference {
         return "{0} seconds ago" -f [math]::Floor($timeDifference.TotalSeconds)
     }
 }
+
 function Format-DateTime {
     param (
         [datetime]$dateTime
@@ -58,7 +59,7 @@ $systems = @()
 
 do {
     $response = Invoke-RestMethod -ContentType $contentType -Method Get -Uri $uri -Headers $headers
-    $systems += $response.items | Select-Object systemId, state, lastSeen, enrolledAt, enclaveVersion, hostname, platformType, description, virtualAddress
+    $systems += $response.items | Select-Object systemId, state, lastSeen, enrolledAt, enclaveVersion, hostname, platformType, description, virtualAddress, osVersion, tags
 
     $uri = if ($null -ne $response.links.next -and $response.links.next -ne "") { $response.links.next } else { $null }
 } while ($uri)
@@ -69,6 +70,22 @@ $systems = $systems | Sort-Object lastSeen
 foreach ($system in $systems) {
     $system.lastSeen = if ($system.lastSeen) { Get-HumanReadableTimeDifference -pastTime $system.lastSeen } else { "Never seen" }
     $system.enrolledAt = Format-DateTime -dateTime $system.enrolledAt
+    
+    # Clean up osVersion - remove line breaks and extra whitespace
+    if ($system.osVersion) {
+        $system.osVersion = ($system.osVersion -split '\s+') -join ' '
+    }
+    
+    # Format tags as a comma-separated string
+    if ($system.tags -and $system.tags.Count -gt 0) {
+        try {
+            $system.tags = ($system.tags | ForEach-Object { if ($_.tag) { $_.tag } }) -join ", "
+        } catch {
+            $system.tags = ""
+        }
+    } else {
+        $system.tags = ""
+    }
 }
 
 # Display or export the systems data
@@ -95,14 +112,8 @@ if ($duplicateVirtualAddresses)
 
     Write-Host "Warning: Duplicate virtual addresses detected between the following systems:" -ForegroundColor Yellow
 
-    # Display or export duplicate systems
-    if ($csvPath) {
-        $duplicatesCsvPath = $csvPath -replace '\.csv$', '_duplicates.csv'
-        $duplicateSystems | Sort-Object virtualAddress | Export-Csv -Path $duplicatesCsvPath -NoTypeInformation
-        Write-Host "Duplicate systems exported to: $duplicatesCsvPath" -ForegroundColor Yellow
-    } else {
-        $duplicateSystems | Sort-Object virtualAddress | Format-Table -Property systemId, virtualAddress, state, hostname -AutoSize
-    }
+    # Sort by virtualAddress and display only systemId and virtualAddress
+    $duplicateSystems | Sort-Object virtualAddress | Format-Table -Property systemId, virtualAddress, state, hostname -AutoSize
 
     Write-Host "Consider using the set-config command to resolve the duplicate IP address conflict on affected systems.`n" -ForegroundColor Yellow
     Write-Host "  C:\> enclave set-config virtual-ip x.x.x.x`n"
