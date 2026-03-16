@@ -8,6 +8,14 @@ No administrator privileges are required. Commands that need elevation will have
 
 ## Running the script
 
+Run directly in PowerShell without cloning:
+
+```
+irm https://raw.githubusercontent.com/enclave-networks/api-automation-scripts/main/reports/os-health-report/os-health-report.ps1 | iex
+```
+
+Or clone the repo and run locally:
+
 ```
 .\os-health-report.ps1
 ```
